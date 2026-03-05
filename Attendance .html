@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>Student Attendance</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap');
+
+  :root {
+    --primary: #6200EE;
+    --primary-dark: #3700B3;
+    --secondary: #03DAC6;
+    --error: #B00020;
+    --surface: #FFFFFF;
+    --background: #F5F5F5;
+    --on-primary: #FFFFFF;
+    --on-surface: #000000;
+    --present-color: #00C853;
+    --absent-color: #D50000;
+    --pending-color: #FF6D00;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Roboto', sans-serif;
+    background: var(--background);
+    min-height: 100vh;
+    max-width: 420px;
+    margin: 0 auto;
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    background: var(--primary-dark);
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding: 0 16px;
+    gap: 6px;
+  }
+  .status-bar span { color: #fff; font-size: 11px; font-weight: 500; }
+
+  /* APP BAR */
+  .app-bar {
+    background: var(--primary);
+    padding: 0 4px 0 16px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  }
+  .app-bar-title { color: #fff; font-size: 20px; font-weight: 500; letter-spacing: 0.15px; }
+  .app-bar-icons { display: flex; gap: 4px; }
+  .icon-btn {
+    width: 48px; height: 48px; border-radius: 50%; border: none;
+    background: transparent; color: #fff; font-size: 20px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .icon-btn:active { background: rgba(255,255,255,0.2); }
+
+  /* TABS */
+  .tabs {
+    background: var(--primary);
+    display: flex;
+    border-bottom: none;
+  }
+  .tab {
+    flex: 1; padding: 14px 4px; text-align: center;
+    color: rgba(255,255,255,0.7); font-size: 13px; font-weight: 500;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    cursor: pointer; border: none; background: transparent;
+    border-bottom: 3px solid transparent; transition: all 0.2s;
+    font-family: 'Roboto', sans-serif;
+  }
+  .tab.active { color: #fff; border-bottom: 3px solid var(--secondary); }
+  .tab:active { background: rgba(255,255,255,0.1); }
+
+  /* CONTENT */
+  .screen { display: none; animation: slideIn 0.2s ease; }
+  .screen.active { display: block; }
+  @keyframes slideIn { from { opacity:0; transform: translateY(6px); } to { opacity:1; transform: translateY(0); } }
+
+  /* FAB */
+  .fab {
+    position: fixed; bottom: 24px; right: calc(50% - 210px + 16px);
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--secondary); color: #000; font-size: 28px;
+    border: none; box-shadow: 0 6px 16px rgba(0,0,0,0.3);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; z-index: 100; transition: all 0.2s;
+    font-family: 'Roboto', sans-serif;
+  }
+  .fab:active { transform: scale(0.93); box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border-radius: 12px;
+    margin: 12px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.06);
+    overflow: hidden;
+  }
+
+  /* STATS CARD */
+  .stats-grid {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 0;
+  }
+  .stat-cell {
+    padding: 18px; text-align: center;
+    border-right: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  .stat-cell:nth-child(2n) { border-right: none; }
+  .stat-cell:nth-child(3), .stat-cell:nth-child(4) { border-bottom: none; }
+  .stat-num { font-size: 34px; font-weight: 700; }
+  .stat-lbl { font-size: 11px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; color: #757575; }
+
+  /* PROGRESS */
+  .progress-section { padding: 16px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 13px; color: #424242; font-weight: 500; margin-bottom: 8px; }
+  .progress-track { height: 8px; background: #E0E0E0; border-radius: 99px; overflow: hidden; }
+  .progress-bar {
+    height: 100%; border-radius: 99px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    transition: width 0.6s cubic-bezier(.34,1.56,.64,1);
+  }
+
+  /* STUDENT ITEMS */
+  .list-header {
+    padding: 12px 16px 4px;
+    font-size: 11px; font-weight: 700; color: var(--primary);
+    letter-spacing: 1.5px; text-transform: uppercase;
+  }
+  .student-item {
+    display: flex; align-items: center; padding: 10px 12px;
+    border-bottom: 1px solid #f0f0f0; transition: background 0.15s;
+    animation: fadeRow 0.25s ease;
+  }
+  .student-item:last-child { border-bottom: none; }
+  .student-item:active { background: #F3E5F5; }
+  @keyframes fadeRow { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+
+  .avatar {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; color: #fff; flex-shrink: 0;
+    margin-right: 12px;
+  }
+  .item-info { flex: 1; min-width: 0; }
+  .item-name { font-size: 15px; font-weight: 500; color: #212121; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item-sub { font-size: 12px; color: #757575; margin-top: 2px; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px; border-radius: 99px; font-size: 11px;
+    font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;
+    flex-shrink: 0; margin-right: 6px;
+  }
+  .chip-present { background: #E8F5E9; color: var(--present-color); border: 1.5px solid #A5D6A7; }
+  .chip-absent  { background: #FFEBEE; color: var(--absent-color);  border: 1.5px solid #EF9A9A; }
+  .chip-pending { background: #FFF3E0; color: var(--pending-color); border: 1.5px solid #FFCC80; }
+
+  /* Action mini-buttons */
+  .mini-btn {
+    width: 32px; height: 32px; border-radius: 50%; border: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; cursor: pointer; transition: all 0.15s; flex-shrink: 0;
+  }
+  .mini-btn:active { transform: scale(0.88); }
+  .mini-present { background: #E8F5E9; color: var(--present-color); }
+  .mini-absent  { background: #FFEBEE; color: var(--absent-color); }
+  .mini-delete  { background: #FAFAFA; color: #9E9E9E; }
+
+  /* BOTTOM SHEET */
+  .overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 200;
+    animation: fadeOverlay 0.2s ease;
+  }
+  .overlay.show { display: block; }
+  @keyframes fadeOverlay { from{opacity:0} to{opacity:1} }
+
+  .bottom-sheet {
+    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+    width: 100%; max-width: 420px;
+    background: #fff; border-radius: 24px 24px 0 0;
+    z-index: 300; transition: transform 0.3s cubic-bezier(.34,1.2,.64,1);
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+  .bottom-sheet.show { transform: translateX(-50%) translateY(0); }
+
+  .sheet-handle { width: 40px; height: 4px; background: #E0E0E0; border-radius: 99px; margin: 12px auto 20px; }
+  .sheet-title { font-size: 18px; font-weight: 700; color: #212121; padding: 0 20px 16px; }
+
+  .text-field {
+    margin: 0 16px 16px;
+    position: relative;
+  }
+  .text-field label {
+    position: absolute; top: -9px; left: 12px;
+    font-size: 12px; font-weight: 500; color: var(--primary);
+    background: #fff; padding: 0 4px;
+  }
+  .text-field input, .text-field select {
+    width: 100%; padding: 14px 16px;
+    border: 2px solid var(--primary);
+    border-radius: 8px; font-size: 16px;
+    font-family: 'Roboto', sans-serif;
+    color: #212121; background: #fff;
+    outline: none; appearance: none;
+    -webkit-appearance: none;
+  }
+  .text-field input:focus, .text-field select:focus { border-color: var(--secondary); }
+
+  .sheet-btn {
+    margin: 4px 16px 16px;
+    width: calc(100% - 32px);
+    padding: 16px; border: none; border-radius: 10px;
+    background: var(--primary); color: #fff;
+    font-size: 16px; font-weight: 700; letter-spacing: 0.5px;
+    font-family: 'Roboto', sans-serif;
+    cursor: pointer; transition: all 0.2s;
+    box-shadow: 0 4px 14px rgba(98,0,238,0.4);
+  }
+  .sheet-btn:active { background: var(--primary-dark); transform: scale(0.98); }
+
+  /* SNACKBAR */
+  .snackbar {
+    position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: #323232; color: #fff; padding: 12px 20px;
+    border-radius: 8px; font-size: 14px; font-weight: 500;
+    opacity: 0; transition: all 0.25s; z-index: 999;
+    white-space: nowrap; pointer-events: none;
+    max-width: 360px; text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .snackbar.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* EMPTY STATE */
+  .empty {
+    text-align: center; padding: 60px 30px;
+    color: #BDBDBD;
+  }
+  .empty-icon { font-size: 64px; margin-bottom: 16px; }
+  .empty-title { font-size: 18px; font-weight: 500; color: #9E9E9E; margin-bottom: 8px; }
+  .empty-sub { font-size: 13px; color: #BDBDBD; }
+
+  /* HISTORY */
+  .history-day {
+    background: #fff; margin: 10px 12px; border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+  }
+  .history-day-header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .history-day-header .date { color: #fff; font-weight: 700; font-size: 14px; }
+  .history-day-header .rate { background: rgba(255,255,255,0.2); color: #fff; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 700; }
+  .history-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid #f5f5f5; }
+  .history-row:last-child { border-bottom: none; }
+  .history-name { flex: 1; font-size: 14px; font-weight: 500; color: #212121; }
+
+  /* SCROLL PAD */
+  .scroll-pad { height: 88px; }
+
+  /* Filter chips row */
+  .filter-row {
+    display: flex; gap: 8px; padding: 12px 12px 4px; overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filter-row::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    padding: 6px 16px; border-radius: 99px; font-size: 12px; font-weight: 700;
+    border: 2px solid #E0E0E0; background: #fff; color: #757575;
+    cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    font-family: 'Roboto', sans-serif; flex-shrink: 0;
+  }
+  .filter-chip.active {
+    background: var(--primary); border-color: var(--primary); color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<!-- STATUS BAR (Android-style) -->
+<div class="status-bar">
+  <span id="clock">9:41</span>
+  <span>📶</span>
+  <span>🔋</span>
+</div>
+
+<!-- APP BAR -->
+<div class="app-bar">
+  <span class="app-bar-title">📚 Attendance</span>
+  <div class="app-bar-icons">
+    <button class="icon-btn" onclick="clearAll()" title="Clear All">🗑</button>
+    <button class="icon-btn">⋮</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('home',this)">HOME</button>
+  <button class="tab" onclick="switchTab('students',this)">STUDENTS</button>
+  <button class="tab" onclick="switchTab('history',this)">HISTORY</button>
+</div>
+
+<!-- ══ HOME SCREEN ══ -->
+<div class="screen active" id="screen-home">
+
+  <!-- Stats -->
+  <div class="card" style="margin-top:14px">
+    <div class="stats-grid">
+      <div class="stat-cell"><div class="stat-num" id="s-total" style="color:var(--primary)">0</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-cell"><div class="stat-num" id="s-present" style="color:var(--present-color)">0</div><div class="stat-lbl">Present</div></div>
+      <div class="stat-cell"><div class="stat-num" id="s-absent" style="color:var(--absent-color)">0</div><div class="stat-lbl">Absent</div></div>
+      <div class="stat-cell"><div class="stat-num" id="s-pending" style="color:var(--pending-color)">0</div><div class="stat-lbl">Pending</div></div>
+    </div>
+    <div class="progress-section">
+      <div class="progress-label"><span>Attendance Rate</span><span id="s-pct" style="font-weight:700;color:var(--primary)">0%</span></div>
+      <div class="progress-track"><div class="progress-bar" id="s-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Today's date -->
+  <div style="padding:6px 16px 2px;font-size:13px;font-weight:700;color:#9E9E9E;letter-spacing:1px;text-transform:uppercase" id="today-label">TODAY — </div>
+
+  <!-- Quick list -->
+  <div class="card" id="home-list-card">
+    <div class="list-header">Quick Mark</div>
+    <div id="home-list"><div class="empty"><div class="empty-icon">🎒</div><div class="empty-title">No students yet</div><div class="empty-sub">Tap + to add a student</div></div></div>
+  </div>
+  <div class="scroll-pad"></div>
+</div>
+
+<!-- ══ STUDENTS SCREEN ══ -->
+<div class="screen" id="screen-students">
+  <div class="filter-row">
+    <button class="filter-chip active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-chip" onclick="setFilter('present',this)">✅ Present</button>
+    <button class="filter-chip" onclick="setFilter('absent',this)">❌ Absent</button>
+    <button class="filter-chip" onclick="setFilter('pending',this)">⏳ Pending</button>
+  </div>
+  <div id="student-list"></div>
+  <div class="scroll-pad"></div>
+</div>
+
+<!-- ══ HISTORY SCREEN ══ -->
+<div class="screen" id="screen-history">
+  <div id="history-list" style="padding-top:8px"></div>
+  <div class="scroll-pad"></div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openSheet()" title="Add Student">＋</button>
+
+<!-- OVERLAY -->
+<div class="overlay" id="overlay" onclick="closeSheet()"></div>
+
+<!-- BOTTOM SHEET -->
+<div class="bottom-sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div class="sheet-title">Add New Student</div>
+
+  <div class="text-field">
+    <label>Student Name</label>
+    <input type="text" id="inp-name" placeholder="e.g. Alice Johnson" autocomplete="off" onkeydown="if(event.key==='Enter')document.getElementById('inp-class').focus()"/>
+  </div>
+
+  <div class="text-field">
+    <label>Class / Section</label>
+    <select id="inp-class">
+      <option>Class A</option>
+      <option>Class B</option>
+      <option>Class C</option>
+      <option>Class D</option>
+      <option>Class 1</option>
+      <option>Class 2</option>
+      <option>Class 3</option>
+      <option>Class 4</option>
+      <option>Class 5</option>
+    </select>
+  </div>
+
+  <button class="sheet-btn" onclick="addStudent()">ENROLL STUDENT</button>
+</div>
+
+<!-- SNACKBAR -->
+<div class="snackbar" id="snack"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+//  DATA MODEL (Java-style OOP)
+// ══════════════════════════════════════════════════════
+class Student {
+  constructor(id, name, cls) {
+    this.id     = id;
+    this.name   = name;
+    this.cls    = cls;
+    this.status = "pending"; // "present" | "absent" | "pending"
+  }
+  markPresent() { this.status = "present"; }
+  markAbsent()  { this.status = "absent";  }
+  getInitials() { return this.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(); }
+}
+
+class AttendanceApp {
+  constructor() {
+    this.students  = [];
+    this.history   = []; // [{date, records:[{name,cls,status}]}]
+    this.nextId    = 1;
+    this.seed();
+  }
+  seed() {
+    [["Aarav Sharma","Class A"],["Priya Singh","Class A"],["Rohan Mehta","Class B"],["Neha Patel","Class B"]].forEach(([n,c])=>this.enroll(n,c));
+  }
+  enroll(name, cls) {
+    if (!name?.trim()) throw "Name cannot be empty.";
+    if (this.students.find(s=>s.name.toLowerCase()===name.trim().toLowerCase()&&s.cls===cls))
+      throw `"${name}" already in ${cls}.`;
+    const s = new Student(this.nextId++, name.trim(), cls);
+    this.students.push(s); return s;
+  }
+  remove(id)         { this.students = this.students.filter(s=>s.id!==id); }
+  markPresent(id)    { this.findById(id)?.markPresent(); }
+  markAbsent(id)     { this.findById(id)?.markAbsent();  }
+  findById(id)       { return this.students.find(s=>s.id===id)||null; }
+  getFiltered(f)     { return f==="all"?this.students:this.students.filter(s=>s.status===f); }
+  get total()        { return this.students.length; }
+  get presentCount() { return this.students.filter(s=>s.status==="present").length; }
+  get absentCount()  { return this.students.filter(s=>s.status==="absent").length; }
+  get pendingCount() { return this.students.filter(s=>s.status==="pending").length; }
+  get rate()         { return this.total?Math.round(this.presentCount/this.total*100):0; }
+  saveHistory() {
+    const date = new Date().toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"});
+    const existing = this.history.find(h=>h.date===date);
+    const records = this.students.map(s=>({name:s.name,cls:s.cls,status:s.status}));
+    if (existing) existing.records = records;
+    else this.history.unshift({date, records});
+  }
+  clearAll() { this.students=[]; this.nextId=1; }
+}
+
+// ══════════════════════════════════════════════════════
+//  AVATAR COLORS
+// ══════════════════════════════════════════════════════
+const COLORS = ["#6200EE","#00897B","#D81B60","#F4511E","#1E88E5","#8E24AA","#039BE5","#43A047"];
+function avatarColor(i) { return COLORS[i%COLORS.length]; }
+
+// ══════════════════════════════════════════════════════
+//  APP INSTANCE
+// ══════════════════════════════════════════════════════
+const app = new AttendanceApp();
+let currentFilter = "all";
+let currentTab = "home";
+
+// Clock
+function updateClock() {
+  const now = new Date();
+  document.getElementById("clock").textContent =
+    now.getHours().toString().padStart(2,"0")+":"+now.getMinutes().toString().padStart(2,"0");
+}
+setInterval(updateClock,30000); updateClock();
+
+// Date label
+document.getElementById("today-label").textContent =
+  "TODAY — " + new Date().toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"}).toUpperCase();
+
+// ══════════════════════════════════════════════════════
+//  RENDER
+// ══════════════════════════════════════════════════════
+function renderAll() { updateStats(); renderHomeList(); renderStudentList(); renderHistory(); }
+
+function updateStats() {
+  document.getElementById("s-total").textContent   = app.total;
+  document.getElementById("s-present").textContent = app.presentCount;
+  document.getElementById("s-absent").textContent  = app.absentCount;
+  document.getElementById("s-pending").textContent = app.pendingCount;
+  document.getElementById("s-pct").textContent     = app.rate+"%";
+  document.getElementById("s-bar").style.width     = app.rate+"%";
+}
+
+function chipHTML(status) {
+  if (status==="present") return `<span class="chip chip-present">✔ Present</span>`;
+  if (status==="absent")  return `<span class="chip chip-absent">✘ Absent</span>`;
+  return `<span class="chip chip-pending">⏳ Pending</span>`;
+}
+
+function renderHomeList() {
+  const el = document.getElementById("home-list");
+  if (!app.students.length) {
+    el.innerHTML=`<div class="empty"><div class="empty-icon">🎒</div><div class="empty-title">No students yet</div><div class="empty-sub">Tap + to add a student</div></div>`;
+    return;
+  }
+  el.innerHTML = app.students.map((s,i)=>`
+    <div class="student-item">
+      <div class="avatar" style="background:${avatarColor(i)}">${s.getInitials()}</div>
+      <div class="item-info">
+        <div class="item-name">${s.name}</div>
+        <div class="item-sub">${s.cls}</div>
+      </div>
+      ${chipHTML(s.status)}
+      <button class="mini-btn mini-present" onclick="quickMark(${s.id},'present')" title="Present">✔</button>
+      <button class="mini-btn mini-absent"  onclick="quickMark(${s.id},'absent')"  title="Absent">✘</button>
+    </div>`).join("");
+}
+
+function renderStudentList() {
+  const el = document.getElementById("student-list");
+  const list = app.getFiltered(currentFilter);
+  if (!list.length) {
+    el.innerHTML=`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">No results</div><div class="empty-sub">Try a different filter</div></div>`;
+    return;
+  }
+  el.innerHTML = `<div class="card" style="margin-top:10px">
+    <div class="list-header">${list.length} Student${list.length!==1?"s":""}</div>
+    ${list.map((s,i)=>{
+      const gi = app.students.indexOf(s);
+      return `<div class="student-item">
+        <div class="avatar" style="background:${avatarColor(gi)}">${s.getInitials()}</div>
+        <div class="item-info">
+          <div class="item-name">${s.name}</div>
+          <div class="item-sub">${s.cls} · ID #${s.id}</div>
+        </div>
+        ${chipHTML(s.status)}
+        <button class="mini-btn mini-present" onclick="quickMark(${s.id},'present')" title="Present">✔</button>
+        <button class="mini-btn mini-absent"  onclick="quickMark(${s.id},'absent')"  title="Absent">✘</button>
+        <button class="mini-btn mini-delete"  onclick="deleteStudent(${s.id})"       title="Delete">🗑</button>
+      </div>`;
+    }).join("")}
+  </div>`;
+}
+
+function renderHistory() {
+  const el = document.getElementById("history-list");
+  app.saveHistory();
+  if (!app.history.length || !app.students.length) {
+    el.innerHTML=`<div class="empty" style="padding-top:60px"><div class="empty-icon">📊</div><div class="empty-title">No history yet</div><div class="empty-sub">Mark attendance to see records</div></div>`;
+    return;
+  }
+  el.innerHTML = app.history.map(day=>{
+    const p = day.records.filter(r=>r.status==="present").length;
+    const total = day.records.length;
+    const pct = total?Math.round(p/total*100):0;
+    return `<div class="history-day">
+      <div class="history-day-header">
+        <span class="date">📅 ${day.date}</span>
+        <span class="rate">${p}/${total} · ${pct}%</span>
+      </div>
+      ${day.records.map((r,i)=>`
+        <div class="history-row">
+          <div class="avatar" style="background:${avatarColor(i)};width:32px;height:32px;font-size:12px;margin-right:4px">${r.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase()}</div>
+          <span class="history-name">${r.name}</span>
+          <span style="font-size:11px;color:#9E9E9E;margin-right:8px">${r.cls}</span>
+          ${chipHTML(r.status)}
+        </div>`).join("")}
+    </div>`;
+  }).join("");
+}
+
+// ══════════════════════════════════════════════════════
+//  ACTIONS
+// ══════════════════════════════════════════════════════
+function quickMark(id, status) {
+  const s = app.findById(id);
+  if (!s) return;
+  const prev = s.status;
+  if (status==="present") app.markPresent(id); else app.markAbsent(id);
+  renderAll();
+  snack(`${s.name} marked ${status==="present"?"✔ Present":"✘ Absent"}`);
+}
+
+function deleteStudent(id) {
+  const s = app.findById(id);
+  if (!s) return;
+  const name = s.name;
+  app.remove(id);
+  renderAll();
+  snack(`🗑 ${name} removed`);
+}
+
+function clearAll() {
+  if (!app.students.length) { snack("No students to clear"); return; }
+  app.clearAll(); renderAll(); snack("All students cleared");
+}
+
+function addStudent() {
+  const name = document.getElementById("inp-name").value;
+  const cls  = document.getElementById("inp-class").value;
+  try {
+    const s = app.enroll(name, cls);
+    document.getElementById("inp-name").value = "";
+    closeSheet();
+    renderAll();
+    snack(`🎓 ${s.name} enrolled in ${s.cls}!`);
+  } catch(e) { snack("⚠️ "+e, true); }
+}
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll(".filter-chip").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  renderStudentList();
+}
+
+// ══════════════════════════════════════════════════════
+//  TAB / SHEET NAVIGATION
+// ══════════════════════════════════════════════════════
+function switchTab(tab, btn) {
+  currentTab = tab;
+  document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+  document.getElementById("screen-"+tab).classList.add("active");
+  btn.classList.add("active");
+  if (tab==="history") renderHistory();
+}
+
+function openSheet() {
+  document.getElementById("sheet").classList.add("show");
+  document.getElementById("overlay").classList.add("show");
+  setTimeout(()=>document.getElementById("inp-name").focus(),350);
+}
+function closeSheet() {
+  document.getElementById("sheet").classList.remove("show");
+  document.getElementById("overlay").classList.remove("show");
+}
+
+// ══════════════════════════════════════════════════════
+//  SNACKBAR
+// ══════════════════════════════════════════════════════
+let snackTimer;
+function snack(msg) {
+  const el = document.getElementById("snack");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(snackTimer);
+  snackTimer = setTimeout(()=>el.classList.remove("show"), 2600);
+}
+
+// ══════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════
+renderAll();
+</script>
+</body>
+</html>
